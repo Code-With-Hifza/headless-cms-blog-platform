@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 const SITE_NAME = "ContentFlow";
 const DEFAULT_DESCRIPTION =
   "ContentFlow is a next-generation headless CMS and digital publishing platform built for modern editorial teams and content creators.";
