@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import DOMPurify from "isomorphic-dompurify";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -41,23 +40,15 @@ export function countWords(content: string): number {
 }
 
 /**
- * Sanitize HTML to prevent XSS attacks while preserving safe tags & attributes
+ * Sanitize HTML safely on serverless environments
  */
 export function sanitizeHtml(html: string): string {
   if (!html) return "";
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: [
-      "h1", "h2", "h3", "h4", "h5", "h6", "p", "a", "ul", "ol", "li",
-      "b", "i", "strong", "em", "strike", "code", "pre", "blockquote",
-      "img", "figure", "figcaption", "table", "thead", "tbody", "tr", "th",
-      "td", "hr", "br", "span", "div", "iframe", "video", "source"
-    ],
-    ALLOWED_ATTR: [
-      "href", "target", "rel", "src", "alt", "title", "class", "style",
-      "width", "height", "frameborder", "allow", "allowfullscreen", "data-*"
-    ],
-    ADD_ATTR: ["target"],
-  });
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, "")
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript\s*:/gi, "");
 }
 
 /**
@@ -66,6 +57,7 @@ export function sanitizeHtml(html: string): string {
 export function formatDate(date: string | Date | null | undefined): string {
   if (!date) return "";
   const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
