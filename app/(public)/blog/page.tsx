@@ -13,7 +13,7 @@ export const metadata = generatePageMetadata({
     "Explore deep-dive technical publications, architecture case studies, and editorial essays.",
 });
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function BlogPage({
   searchParams,

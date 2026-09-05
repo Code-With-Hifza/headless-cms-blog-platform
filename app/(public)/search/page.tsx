@@ -10,6 +10,8 @@ export const metadata = generatePageMetadata({
   description: "Search across technical articles, categories, authors, and topics.",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function SearchPage({
   searchParams,
 }: {
