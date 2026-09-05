@@ -10,13 +10,22 @@ This document provides step-by-step instructions to run the application in your 
 
 Open PowerShell in the project root directory (`a:\headless-cms-blog-platform`):
 
-### A. Start Development Server (Hot Reload)
+### Option 1: Using the 1-Click Script (Easiest)
+In your PowerShell terminal, simply run:
 ```powershell
-# 1. Ensure Node.js & NPM are in your session PATH (if not globally installed):
-$env:Path = "B:\Setup Install;" + $env:Path
+.\dev.bat
+```
 
-# 2. Start the development server:
-npm run dev
+### Option 2: Running via PowerShell
+Because Node.js is located in `B:\Setup Install`, set the PATH first in your terminal session:
+```powershell
+$env:Path = "B:\Setup Install;" + $env:Path; npm run dev
+```
+
+### Option 3: Permanently add Node to your Windows User PATH (One-Time Setup)
+Run this command once in PowerShell so `npm` and `node` work everywhere forever:
+```powershell
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";B:\Setup Install", "User")
 ```
 > 🌐 The application will be accessible at: **[http://localhost:3000](http://localhost:3000)**
 
