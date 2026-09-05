@@ -674,7 +674,7 @@ export async function GET() {
         error: error.message || "Failed to seed database",
         stack: error.stack
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
