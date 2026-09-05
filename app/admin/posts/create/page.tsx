@@ -2,7 +2,7 @@ import { getCategories } from "@/lib/services/categories";
 import { getAuthors } from "@/lib/services/authors";
 import { getTags } from "@/lib/services/tags";
 import { getMediaList } from "@/lib/services/media";
-import { CreatePostForm } from "./create-form";
+import { CreatePostForm } from "@/components/admin/create-post-form";
 
 export const revalidate = 0;
 

@@ -4,7 +4,7 @@ import { getCategories } from "@/lib/services/categories";
 import { getAuthors } from "@/lib/services/authors";
 import { getTags } from "@/lib/services/tags";
 import { getMediaList } from "@/lib/services/media";
-import { EditPostForm } from "./edit-form";
+import { EditPostForm } from "@/components/admin/edit-post-form";
 
 export const revalidate = 0;
 

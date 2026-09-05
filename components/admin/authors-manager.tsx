@@ -86,7 +86,6 @@ export function AuthorsManager({ initialAuthors }: { initialAuthors: any[] }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      {/* Create Author Form */}
       <div className="lg:col-span-5">
         <form onSubmit={handleCreate} className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-border">
@@ -187,7 +186,6 @@ export function AuthorsManager({ initialAuthors }: { initialAuthors: any[] }) {
         </form>
       </div>
 
-      {/* Authors List */}
       <div className="lg:col-span-7 space-y-4">
         {authors.map((a) => (
           <div

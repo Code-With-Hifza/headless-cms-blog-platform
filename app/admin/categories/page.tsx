@@ -1,5 +1,5 @@
 import { getCategories } from "@/lib/services/categories";
-import { CategoriesManager } from "./categories-manager";
+import { CategoriesManager } from "@/components/admin/categories-manager";
 
 export const revalidate = 0;
 

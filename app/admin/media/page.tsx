@@ -1,5 +1,5 @@
 import { getMediaList } from "@/lib/services/media";
-import { MediaManager } from "./media-manager";
+import { MediaManager } from "@/components/admin/media-manager";
 
 export const revalidate = 0;
 

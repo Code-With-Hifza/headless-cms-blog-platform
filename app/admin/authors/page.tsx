@@ -1,5 +1,5 @@
 import { getAuthors } from "@/lib/services/authors";
-import { AuthorsManager } from "./authors-manager";
+import { AuthorsManager } from "@/components/admin/authors-manager";
 
 export const revalidate = 0;
 

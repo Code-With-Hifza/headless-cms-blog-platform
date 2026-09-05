@@ -1,5 +1,5 @@
 import { getSiteSettings } from "@/lib/services/settings";
-import { SettingsForm } from "./settings-form";
+import { SettingsForm } from "@/components/admin/settings-form";
 
 export const revalidate = 0;
 

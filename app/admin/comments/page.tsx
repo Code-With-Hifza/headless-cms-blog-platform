@@ -1,5 +1,5 @@
 import { getAllComments } from "@/lib/services/comments";
-import { CommentsManager } from "./comments-manager";
+import { CommentsManager } from "@/components/admin/comments-manager";
 
 export const revalidate = 0;
 

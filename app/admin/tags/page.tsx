@@ -1,5 +1,5 @@
 import { getTags } from "@/lib/services/tags";
-import { TagsManager } from "./tags-manager";
+import { TagsManager } from "@/components/admin/tags-manager";
 
 export const revalidate = 0;
 
