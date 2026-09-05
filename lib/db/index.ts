@@ -8,12 +8,29 @@ import * as schema from "./schema";
 const DEFAULT_DB_URL =
   "postgresql://neondb_owner:npg_ruASU7b5lWdn@ep-lucky-king-aw5by7sf-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require";
 
-const connectionString = (
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.NEON_DATABASE_URL ||
-  DEFAULT_DB_URL
-).trim();
+function getSanitizedDbUrl(): string {
+  const rawUrl = (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.NEON_DATABASE_URL ||
+    DEFAULT_DB_URL
+  ).trim();
+
+  try {
+    const parsed = new URL(rawUrl);
+    parsed.searchParams.delete("channel_binding");
+    if (!parsed.searchParams.has("sslmode")) {
+      parsed.searchParams.set("sslmode", "require");
+    }
+    return parsed.toString();
+  } catch {
+    return rawUrl
+      .replace(/&channel_binding=[^&]*/g, "")
+      .replace(/\?channel_binding=[^&]*&?/g, "?");
+  }
+}
+
+const connectionString = getSanitizedDbUrl();
 
 // Initialize Neon HTTP Serverless client
 const sql = neon(connectionString);
