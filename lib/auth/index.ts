@@ -8,8 +8,12 @@ export { handlers, auth, signIn, signOut } from "./auth";
  * Helper to get current authenticated user on server with their roles
  */
 export async function getCurrentUser() {
-  const session = await auth();
-  return session?.user || null;
+  try {
+    const session = await auth();
+    return session?.user || null;
+  } catch (err) {
+    return null;
+  }
 }
 
 /**

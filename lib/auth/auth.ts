@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import type { Role } from "@/lib/permissions";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -82,5 +83,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "cf_super_secure_secret_key_32_bytes_min_contentflow_2026_prod",
 });
