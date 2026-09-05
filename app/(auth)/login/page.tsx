@@ -39,9 +39,9 @@ export default function LoginPage() {
     }
   };
 
-  const setDemoCredentials = (roleEmail: string) => {
+  const setDemoCredentials = (roleEmail: string, rolePassword = "Password123!") => {
     setEmail(roleEmail);
-    setPassword("Password123!");
+    setPassword(rolePassword);
     setError(null);
   };
 
@@ -62,34 +62,36 @@ export default function LoginPage() {
         <div className="grid grid-cols-2 gap-1.5 text-[11px]">
           <button
             type="button"
-            onClick={() => setDemoCredentials("admin@contentflow.io")}
-            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate"
+            onClick={() => setDemoCredentials("admin@gmail.com", "Admin@12345")}
+            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate font-medium"
           >
             👑 Admin
           </button>
           <button
             type="button"
-            onClick={() => setDemoCredentials("editor@contentflow.io")}
-            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate"
+            onClick={() => setDemoCredentials("editor@contentflow.io", "Password123!")}
+            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate font-medium"
           >
             ✍️ Editor
           </button>
           <button
             type="button"
-            onClick={() => setDemoCredentials("author@contentflow.io")}
-            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate"
+            onClick={() => setDemoCredentials("author@contentflow.io", "Password123!")}
+            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate font-medium"
           >
             📝 Author
           </button>
           <button
             type="button"
-            onClick={() => setDemoCredentials("user@contentflow.io")}
-            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate"
+            onClick={() => setDemoCredentials("user@contentflow.io", "Password123!")}
+            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-left transition-colors truncate font-medium"
           >
             👤 User
           </button>
         </div>
-        <p className="mt-1.5 text-[10px] text-slate-500 text-center">Password: Password123!</p>
+        <p className="mt-1.5 text-[10px] text-slate-400 text-center">
+          Admin: <span className="text-sky-400 font-mono">admin@gmail.com</span> / <span className="text-sky-400 font-mono">Admin@12345</span>
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

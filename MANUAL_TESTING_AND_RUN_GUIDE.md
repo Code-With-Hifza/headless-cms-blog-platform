@@ -50,7 +50,7 @@ The database has been seeded with pre-configured accounts for all RBAC roles. Yo
 
 | Role | Email | Password | Permissions |
 | :--- | :--- | :--- | :--- |
-| **👑 ADMIN** | `admin@contentflow.io` | `Password123!` | Full access to Dashboard, Posts, Categories, Tags, Media, Comments, Authors, Settings, Analytics |
+| **👑 ADMIN** | `admin@gmail.com` | `Admin@12345` | Full access to Dashboard, Posts, Categories, Tags, Media, Comments, Authors, Settings, Analytics |
 | **✍️ EDITOR** | `editor@contentflow.io` | `Password123!` | Can edit/publish all posts, manage media, moderate comments, manage taxonomy |
 | **📝 AUTHOR** | `author@contentflow.io` | `Password123!` | Can create and edit own draft articles, upload media |
 | **👤 USER** | `user@contentflow.io` | `Password123!` | Public reader account, can submit comments and manage profile |
