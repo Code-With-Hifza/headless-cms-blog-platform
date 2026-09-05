@@ -44,3 +44,5 @@ export type Database = typeof db;
 // Export all schemas, relations, and TypeScript models
 export * from "./schema";
 export * from "./types";
+export { sql };
+

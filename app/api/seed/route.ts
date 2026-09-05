@@ -1,25 +1,11 @@
 import { NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { db, sql } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { slugify, calculateReadingTime, countWords } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-const DEFAULT_DB_URL =
-  "postgresql://neondb_owner:npg_ruASU7b5lWdn@ep-lucky-king-aw5by7sf-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require";
-
-const connectionString = (
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.NEON_DATABASE_URL ||
-  DEFAULT_DB_URL
-).trim();
-
-const sql = neon(connectionString);
-const db = drizzle(sql, { schema });
 
 export async function GET() {
   try {
