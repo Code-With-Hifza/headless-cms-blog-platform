@@ -64,6 +64,59 @@ export async function getPosts(params: GetPostsParams = {}) {
     );
   }
 
+  if (params.categorySlug) {
+    const cat = await db.query.categories.findFirst({
+      where: eq(categories.slug, params.categorySlug),
+    });
+    if (cat) {
+      conditions.push(eq(posts.categoryId, cat.id));
+    } else {
+      return {
+        data: [],
+        meta: { page, limit, total: 0, totalPages: 1 },
+      };
+    }
+  }
+
+  if (params.authorSlug) {
+    const auth = await db.query.authors.findFirst({
+      where: eq(authors.slug, params.authorSlug),
+    });
+    if (auth) {
+      conditions.push(eq(posts.authorId, auth.id));
+    } else {
+      return {
+        data: [],
+        meta: { page, limit, total: 0, totalPages: 1 },
+      };
+    }
+  }
+
+  if (params.tagSlug) {
+    const tagRecord = await db.query.tags.findFirst({
+      where: eq(tags.slug, params.tagSlug),
+    });
+    if (tagRecord) {
+      const postTagRecords = await db.query.postTags.findMany({
+        where: eq(postTags.tagId, tagRecord.id),
+      });
+      const postIds = postTagRecords.map((pt) => pt.postId);
+      if (postIds.length > 0) {
+        conditions.push(inArray(posts.id, postIds));
+      } else {
+        return {
+          data: [],
+          meta: { page, limit, total: 0, totalPages: 1 },
+        };
+      }
+    } else {
+      return {
+        data: [],
+        meta: { page, limit, total: 0, totalPages: 1 },
+      };
+    }
+  }
+
   let sortOrder = desc(posts.publishedAt);
   if (params.sort === "oldest") sortOrder = asc(posts.publishedAt);
   if (params.sort === "popular") sortOrder = desc(posts.viewsCount);
