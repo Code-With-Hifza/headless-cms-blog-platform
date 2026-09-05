@@ -1,0 +1,38 @@
+name: ContentFlow CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate:
+    name: Lint, Test & Build Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: TypeScript Type Checking
+        run: npx tsc --noEmit
+
+      - name: Run Automated Vitest Unit & Integration Tests
+        run: npm test
+
+      - name: Production Build
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/contentflow?sslmode=disable
+          AUTH_SECRET: test_auth_secret_minimum_32_characters_long
+          NEXTAUTH_URL: http://localhost:3000
