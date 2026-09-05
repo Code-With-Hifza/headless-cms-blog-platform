@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -7,9 +8,286 @@ import { slugify, calculateReadingTime, countWords } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const DEFAULT_DB_URL =
+  "postgresql://neondb_owner:npg_ruASU7b5lWdn@ep-lucky-king-aw5by7sf-pooler.c-12.us-east-1.aws.neon.tech/neondb?sslmode=require";
+
+const connectionString = (
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.NEON_DATABASE_URL ||
+  DEFAULT_DB_URL
+).trim();
+
+const sql = neon(connectionString);
+const db = drizzle(sql, { schema });
+
 export async function GET() {
   try {
-    // 1. Seed Roles
+    // Step 1: Run DDL queries to create all tables and enums if they do not exist
+    await sql(`
+      DO $$ BEGIN
+        CREATE TYPE post_status AS ENUM ('DRAFT', 'IN_REVIEW', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await sql(`
+      DO $$ BEGIN
+        CREATE TYPE comment_status AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'SPAM');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await sql(`
+      DO $$ BEGIN
+        CREATE TYPE subscriber_status AS ENUM ('SUBSCRIBED', 'UNSUBSCRIBED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        email_verified TIMESTAMPTZ,
+        password_hash TEXT,
+        image TEXT,
+        is_active BOOLEAN DEFAULT TRUE NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role_id VARCHAR(50) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        assigned_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        PRIMARY KEY (user_id, role_id)
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS accounts (
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(255) NOT NULL,
+        provider VARCHAR(255) NOT NULL,
+        provider_account_id VARCHAR(255) NOT NULL,
+        refresh_token TEXT,
+        access_token TEXT,
+        expires_at INT,
+        token_type VARCHAR(255),
+        scope VARCHAR(255),
+        id_token TEXT,
+        session_state VARCHAR(255),
+        PRIMARY KEY (provider, provider_account_id)
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        session_token VARCHAR(255) PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires TIMESTAMPTZ NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS verification_tokens (
+        identifier VARCHAR(255) NOT NULL,
+        token VARCHAR(255) NOT NULL,
+        expires TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (identifier, token)
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) NOT NULL,
+        token VARCHAR(255) NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS authors (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        display_name VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) NOT NULL UNIQUE,
+        bio TEXT,
+        avatar_url TEXT,
+        website_url TEXT,
+        twitter_url TEXT,
+        linkedin_url TEXT,
+        github_url TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT,
+        image TEXT,
+        seo_title VARCHAR(255),
+        seo_description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS media (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        file_name VARCHAR(255) NOT NULL,
+        file_url TEXT NOT NULL,
+        file_type VARCHAR(50) NOT NULL,
+        mime_type VARCHAR(100) NOT NULL,
+        file_size INT NOT NULL,
+        width INT,
+        height INT,
+        alt_text VARCHAR(255),
+        caption TEXT,
+        uploader_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        provider VARCHAR(50) DEFAULT 'local' NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS posts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(500) NOT NULL,
+        slug VARCHAR(500) NOT NULL UNIQUE,
+        excerpt TEXT,
+        content TEXT DEFAULT '' NOT NULL,
+        featured_image_id UUID REFERENCES media(id) ON DELETE SET NULL,
+        author_id UUID NOT NULL REFERENCES authors(id) ON DELETE RESTRICT,
+        category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+        status post_status DEFAULT 'DRAFT' NOT NULL,
+        published_at TIMESTAMPTZ,
+        scheduled_at TIMESTAMPTZ,
+        seo_title VARCHAR(255),
+        seo_description TEXT,
+        canonical_url TEXT,
+        og_image_id UUID REFERENCES media(id) ON DELETE SET NULL,
+        reading_time INT DEFAULT 1 NOT NULL,
+        word_count INT DEFAULT 0 NOT NULL,
+        is_featured BOOLEAN DEFAULT FALSE NOT NULL,
+        views_count INT DEFAULT 0 NOT NULL,
+        preview_token VARCHAR(100),
+        preview_expires_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS post_tags (
+        post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (post_id, tag_id)
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS post_views (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        ip_hash VARCHAR(64),
+        user_agent TEXT,
+        referer TEXT,
+        viewed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        author_name VARCHAR(255) NOT NULL,
+        author_email VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        status comment_status DEFAULT 'PENDING' NOT NULL,
+        parent_id UUID,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        status subscriber_status DEFAULT 'SUBSCRIBED' NOT NULL,
+        token VARCHAR(255) NOT NULL UNIQUE,
+        subscribed_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        unsubscribed_at TIMESTAMPTZ
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS site_settings (
+        id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
+        site_name VARCHAR(255) DEFAULT 'ContentFlow' NOT NULL,
+        site_description TEXT DEFAULT 'A next-generation publishing platform and headless CMS.' NOT NULL,
+        logo_url TEXT,
+        favicon_url TEXT,
+        social_links JSONB DEFAULT '{"twitter":"https://twitter.com","github":"https://github.com","linkedin":"https://linkedin.com"}'::jsonb,
+        allow_comments BOOLEAN DEFAULT TRUE NOT NULL,
+        require_comment_moderation BOOLEAN DEFAULT TRUE NOT NULL,
+        allow_registration BOOLEAN DEFAULT TRUE NOT NULL,
+        default_role VARCHAR(50) DEFAULT 'USER' NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    await sql(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        action VARCHAR(100) NOT NULL,
+        entity VARCHAR(100) NOT NULL,
+        entity_id VARCHAR(255),
+        details JSONB,
+        ip_address VARCHAR(100),
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+      );
+    `);
+
+    // Step 2: Seed Roles
     const roleData = [
       { id: "ADMIN", name: "Administrator", description: "Full system and content access" },
       { id: "EDITOR", name: "Editor", description: "Can edit, moderate and publish all content" },
@@ -21,7 +299,7 @@ export async function GET() {
       await db.insert(schema.roles).values(r).onConflictDoNothing();
     }
 
-    // 2. Seed Users
+    // Step 3: Seed Users
     const defaultPassword = await bcrypt.hash("Password123!", 10);
     const demoUsers = [
       { name: "Eleanor Vance", email: "admin@contentflow.io", role: "ADMIN", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" },
@@ -60,7 +338,7 @@ export async function GET() {
       createdUsers[u.email] = userId;
     }
 
-    // 3. Seed Authors
+    // Step 4: Seed Authors
     const authorData = [
       {
         email: "admin@contentflow.io",
@@ -142,7 +420,7 @@ export async function GET() {
       }
     }
 
-    // 4. Seed Categories
+    // Step 5: Seed Categories
     const categoriesList = [
       { name: "Engineering & Architecture", slug: "engineering", description: "Deep dives into system design, backend scalability, and database optimization.", image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800" },
       { name: "Frontend & Design", slug: "frontend-design", description: "Modern styling, React architectures, UI animations, and accessible experiences.", image: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800" },
@@ -177,7 +455,7 @@ export async function GET() {
       }
     }
 
-    // 5. Seed Tags
+    // Step 6: Seed Tags
     const tagsList = [
       "TypeScript", "Next.js", "React 19", "PostgreSQL", "Drizzle ORM",
       "Tailwind CSS", "Architecture", "Performance", "Full-Stack", "Auth.js",
@@ -207,7 +485,7 @@ export async function GET() {
       }
     }
 
-    // 6. Seed Media Assets
+    // Step 7: Seed Media Assets
     const unsplashCurated = [
       "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200",
       "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=1200",
@@ -247,7 +525,7 @@ export async function GET() {
       }
     }
 
-    // 7. Seed Posts
+    // Step 8: Seed Posts
     const postTitles = [
       "Architecting a High-Performance Headless CMS with Next.js 16 and PostgreSQL",
       "The Evolution of React 19: Server Actions, Transitions, and Modern Compiler Internals",
@@ -318,7 +596,7 @@ export async function GET() {
       publishedAtDate.setDate(publishedAtDate.getDate() - daysAgo);
 
       const articleHtml = `
-        <p class="lead">In this comprehensive guide, we explore the modern architectural patterns, practical techniques, and engineering decisions behind building scalable, reliable, and high-performance applications.</p>
+        <p class="lead">In this comprehensive guide, we explore modern architectural patterns, practical techniques, and engineering decisions behind building scalable, reliable, and high-performance applications.</p>
         <h2>The Core Architectural Vision</h2>
         <p>Modern publishing workflows demand decoupling presentation layers from content authoring engines. By leveraging a headless paradigm, editorial teams gain the freedom to structure data semantically while engineering teams deploy high-speed frontends tailored for sub-second page loads.</p>
         <blockquote>"Architecture is the decisions that you wish you could get right early in a project." — Ralph Johnson</blockquote>
@@ -373,7 +651,7 @@ export async function GET() {
       }
     }
 
-    // 8. Seed Site Settings
+    // Step 9: Seed Site Settings
     await db
       .insert(schema.siteSettings)
       .values({
@@ -394,7 +672,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: "Database seeded successfully with Categories, Authors, Tags, Posts, and Settings!",
+      message: "Database tables created and seeded successfully!",
       stats: {
         categories: categoryIds.length,
         authors: authorIds.length,
@@ -405,7 +683,11 @@ export async function GET() {
   } catch (error: any) {
     console.error("Seed API Error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to seed database" },
+      { 
+        success: false, 
+        error: error.message || "Failed to seed database",
+        stack: error.stack
+      },
       { status: 500 }
     );
   }
