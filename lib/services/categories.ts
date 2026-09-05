@@ -16,7 +16,7 @@ export async function getCategories() {
 
   return items.map((cat) => ({
     ...cat,
-    postCount: cat.posts.length,
+    postCount: cat.posts?.length || 0,
   }));
 }
 

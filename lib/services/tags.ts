@@ -18,7 +18,7 @@ export async function getTags() {
 
   return items.map((tag) => ({
     ...tag,
-    postCount: tag.postTags.filter((pt) => pt.post.status === "PUBLISHED").length,
+    postCount: tag.postTags?.filter((pt) => pt.post?.status === "PUBLISHED").length || 0,
   }));
 }
 

@@ -17,7 +17,7 @@ export async function getAuthors() {
 
   return items.map((author) => ({
     ...author,
-    postCount: author.posts.length,
+    postCount: author.posts?.length || 0,
   }));
 }
 
